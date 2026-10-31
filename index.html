@@ -222,9 +222,10 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 .read-img{width:100%;max-height:340px;object-fit:cover;border-radius:18px;margin-bottom:16px}
 .read h3{font:700 1.7rem/1.25 'Cinzel',serif;color:var(--brown-800);margin-bottom:4px}
 .read .art{white-space:pre-line;margin-top:8px}
-.box.pop{width:fit-content;max-width:94vw;max-height:none;padding:0;background:none;border-radius:14px;overflow:visible;box-shadow:0 20px 60px rgba(0,0,0,.5)}
-.pop .close{top:8px;right:8px;width:42px;height:42px;background:rgba(20,8,4,.85);color:#fff;font-size:1.15rem;border:2px solid rgba(255,255,255,.7)}
-.pop-img{display:block;width:auto;height:auto;max-width:94vw;max-height:88vh;border-radius:14px}
+.box.pop{display:flex;flex-direction:column;align-items:flex-end;width:fit-content;max-width:94vw;max-height:none;padding:0;background:none;border-radius:0;overflow:visible;box-shadow:none;animation:none}
+.pop .close{position:static;flex:none;margin-bottom:8px;width:42px;height:42px;background:#fff;color:var(--brown-900);font-size:1.15rem;border:2px solid var(--gold)}
+.pop-img{display:block;width:auto;height:auto;max-width:94vw;max-height:calc(100vh - 110px);max-height:calc(100dvh - 110px);border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.5)}
+.modal,.box{overscroll-behavior:contain}
 .lightbox img{max-width:94vw;max-height:90vh;border-radius:14px}
 #toast{position:fixed;bottom:26px;left:50%;transform:translate(-50%,120px);background:var(--brown-900);color:#fff;padding:12px 26px;border-radius:30px;z-index:400;transition:.4s;border:2px solid var(--gold);font-size:.88rem}
 #toast.on{transform:translate(-50%,0)}
@@ -655,6 +656,20 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   $$('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m && m.id !== 'mPop') closeAll(); }));
   $('#popClose').addEventListener('click', () => $('#mPop').classList.remove('open'));
   addEventListener('keydown', e => { if(e.key === 'Escape') closeAll(); });
+
+  /* ---------- KUNCI SCROLL HALAMAN SAAT JENDELA TERBUKA ---------- */
+  let locked = false, lockY = 0;
+  new MutationObserver(() => {
+    const any = $$('.modal.open').length > 0;
+    if(any && !locked){
+      locked = true; lockY = scrollY;
+      document.body.style.cssText += ';position:fixed;top:' + (-lockY) + 'px;left:0;right:0;width:100%;';
+    } else if(!any && locked){
+      locked = false;
+      document.body.style.position = ''; document.body.style.top = ''; document.body.style.left = ''; document.body.style.right = ''; document.body.style.width = '';
+      scrollTo({top:lockY, behavior:'instant'});
+    }
+  }).observe(document.body, {subtree:true, attributes:true, attributeFilter:['class']});
 
   /* ---------- BAGIKAN BERITA ---------- */
   // Jika website dipasang di Cloudflare Pages (ada /berita/...), link berita punya pratinjau gambar.
