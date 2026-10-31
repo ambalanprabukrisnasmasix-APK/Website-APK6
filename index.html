@@ -235,6 +235,10 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 }
 @media(max-width:520px){.foot{grid-template-columns:1fr}}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.mrow{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.sgrp{display:flex;gap:6px}
+.sbtn{width:30px;height:30px;padding:0;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;border:1px solid rgba(0,0,0,.12);background:var(--sand);color:var(--brown-700);cursor:pointer;text-decoration:none;flex:none;transition:.2s}
+.sbtn:hover{background:var(--brown-700);color:#fff}
 </style>
 </head>
 <body>
@@ -376,6 +380,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       <form id="newsForm">
         <input type="hidden" id="nId">
         <div class="field"><label>Judul</label><input type="text" id="nTitle" required></div>
+        <div class="field"><label>Tanggal kegiatan</label><input type="date" id="nDate" required></div>
         <div class="field"><label>Foto</label><input type="file" id="nImg" accept="image/*"><img class="preview" id="nPrev" style="display:none" alt=""></div>
         <div class="field"><label>Artikel singkat</label><textarea id="nText" required></textarea></div>
         <div class="err" id="nErr"></div>
@@ -520,7 +525,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       S.struct = site.struct && site.struct.url || null;
       S.krishna = site.krishna && site.krishna.url || null;
       S.info = site.info || {};
-      keep(); renderImages(); renderNews(); renderInfo();
+      keep(); renderImages(); renderNews(); renderInfo(); checkHash();
       if($('#mAdmin').classList.contains('open')) renderAdminNews();
     }catch(_){ /* offline: tampilkan cache */ }
     syncing = false;
@@ -616,7 +621,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
           <h3>${esc(n.title)}</h3>
           <div class="by">Ambalan Prabu Krisna - </div>
           <p>${esc(n.text)}</p>
-          <span class="more">Baca selengkapnya →</span>
+          <div class="mrow"><span class="more">Baca selengkapnya →</span><button class="sbtn" data-share="${n.id}" aria-label="Bagikan berita" title="Bagikan"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button></div>
         </div>
       </article>`).join('') : '<div class="empty">Belum ada berita yang cocok.</div>';
     $$('#newsGrid .reveal').forEach(el => io.observe(el));
@@ -629,16 +634,48 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   }
 
   /* ---------- MODALS ---------- */
-  const open = id => $(id).classList.add('open'), closeAll = () => $$('.modal').forEach(m => m.classList.remove('open'));
+  const open = id => $(id).classList.add('open'), closeAll = () => { $$('.modal').forEach(m => m.classList.remove('open')); if(/^#berita-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); };
   $$('[data-close]').forEach(b => b.addEventListener('click', closeAll));
   $$('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m) closeAll(); }));
   addEventListener('keydown', e => { if(e.key === 'Escape') closeAll(); });
 
-  $('#newsGrid').addEventListener('click', e => {
-    const c = e.target.closest('.news'); if(!c) return;
-    const n = news.find(x => x.id === c.dataset.id); if(!n) return;
-    $('#readBody').innerHTML = `<img class="read-img" src="${n.img}" alt=""><h3>${esc(n.title)}</h3><div class="by">Ambalan Prabu Krisna - </div><div class="art">${esc(n.text)}</div><p style="margin-top:14px;color:var(--muted);font-size:.85rem">📅 ${fmt(n.date)}</p>`;
+  /* ---------- BAGIKAN BERITA ---------- */
+  // Jika website dipasang di Cloudflare Pages (ada /berita/...), link berita punya pratinjau gambar.
+  let FN_OK = false;
+  fetch('/berita/_ping', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { FN_OK = !!(j && j.ok); }).catch(() => {});
+  const newsUrl = id => FN_OK ? location.origin + '/berita/' + id : location.href.split('#')[0] + '#berita-' + id;
+  async function copyText(t){
+    try{ await navigator.clipboard.writeText(t); return true; }catch(_){}
+    try{ const x = document.createElement('textarea'); x.value = t; x.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(x); x.select(); const ok = document.execCommand('copy'); x.remove(); return ok; }catch(_){ return false; }
+  }
+  async function shareNews(id){
+    const n = news.find(x => x.id === id); if(!n) return;
+    const url = newsUrl(id);
+    if(navigator.share){ try{ await navigator.share({ title: n.title, text: n.title + ' - Ambalan Prabu Krisna', url }); return; }catch(e){ if(e && e.name === 'AbortError') return; } }
+    toast((await copyText(url)) ? 'Link berita disalin ✔' : 'Salin manual: ' + url);
+  }
+  function openNews(id, setHash = true){
+    const n = news.find(x => x.id === id); if(!n) return false;
+    const url = newsUrl(id), wa = 'https://wa.me/?text=' + encodeURIComponent(n.title + '\n' + url);
+    $('#readBody').innerHTML = `<img class="read-img" src="${n.img}" alt=""><h3>${esc(n.title)}</h3><div class="by">Ambalan Prabu Krisna - </div><div class="art">${esc(n.text)}</div><div class="mrow" style="margin-top:14px"><span style="color:var(--muted);font-size:.85rem">📅 ${fmt(n.date)}</span><span class="sgrp"><button class="sbtn" data-share="${n.id}" aria-label="Bagikan" title="Bagikan"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button><button class="sbtn" data-copy="${n.id}" aria-label="Salin link" title="Salin link"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7 0l3-3a5 5 0 0 0-7-7l-1 1"/><path d="M14 11a5 5 0 0 0-7 0l-3 3a5 5 0 0 0 7 7l1-1"/></svg></button><a class="sbtn" href="${wa}" target="_blank" rel="noopener" aria-label="Kirim ke WhatsApp" title="WhatsApp"><svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 2a10 10 0 0 0-8.6 15L2 22l5.2-1.4A10 10 0 1 0 12 2zm5.2 14.1c-.2.6-1.3 1.2-1.8 1.2-.5.1-1 .2-3.3-.7-2.8-1.2-4.6-4-4.7-4.2-.1-.2-1.1-1.5-1.1-2.8s.7-2 1-2.3c.2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.5l.8 2c.1.2.1.4 0 .5l-.4.6c-.1.2-.3.3-.1.6.2.3.8 1.3 1.7 2.1 1.2 1 2.1 1.3 2.4 1.5.3.1.5.1.6-.1l.9-1.1c.2-.2.4-.2.6-.1l1.9.9c.3.1.5.2.5.3.1.3.1.8-.1 1.4z"/></svg></a></span></div>`;
     open('#mRead');
+    if(setHash) history.replaceState(null, '', '#berita-' + n.id);
+    return true;
+  }
+  function checkHash(){
+    const m = /^#berita-(.+)$/.exec(location.hash); if(!m) return;
+    if(!$('#mRead').classList.contains('open') || !$('#readBody').innerHTML.includes('data-share="' + m[1] + '"')) openNews(decodeURIComponent(m[1]), false);
+  }
+  addEventListener('hashchange', checkHash);
+  $('#readBody').addEventListener('click', async e => {
+    const sh = e.target.closest('[data-share]'), cp = e.target.closest('[data-copy]');
+    if(sh) shareNews(sh.dataset.share);
+    if(cp) toast((await copyText(newsUrl(cp.dataset.copy))) ? 'Link berita disalin ✔' : 'Salin manual: ' + newsUrl(cp.dataset.copy));
+  });
+  $('#newsGrid').addEventListener('click', e => {
+    const sh = e.target.closest('[data-share]'); if(sh){ e.stopPropagation(); shareNews(sh.dataset.share); return; }
+    const c = e.target.closest('.news'); if(!c) return;
+    openNews(c.dataset.id);
   });
   $('#sBox').addEventListener('click', () => { $('#lightImg').src = getStruct(); open('#mLight'); });
 
@@ -674,8 +711,9 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 
   /* ---------- ADMIN: BERITA ---------- */
   let newImg = null;
-  function resetForm(){ $('#newsForm').reset(); $('#nId').value=''; $('#nPrev').style.display='none'; newImg=null; $('#nErr').textContent=''; }
-  $('#nReset').addEventListener('click', resetForm);
+  const today = () => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+  function resetForm(){ $('#newsForm').reset(); $('#nDate').value = today(); $('#nId').value=''; $('#nPrev').style.display='none'; newImg=null; $('#nErr').textContent=''; }
+  $('#nReset').addEventListener('click', resetForm); $('#nDate').value = today();
   $('#nImg').addEventListener('change', async e => {
     const f = e.target.files[0]; if(!f) return;
     try{ newImg = await compress(f, 1000, .75); $('#nPrev').src = newImg; $('#nPrev').style.display='block'; }catch(_){ $('#nErr').textContent='Gambar tidak dapat dibaca.'; }
@@ -683,14 +721,14 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   $('#newsForm').addEventListener('submit', async e => {
     e.preventDefault();
     if(!isAdmin) return;
-    const id = $('#nId').value, title = $('#nTitle').value.trim(), text = $('#nText').value.trim();
+    const id = $('#nId').value, title = $('#nTitle').value.trim(), text = $('#nText').value.trim(), date = $('#nDate').value || today();
     if(!title || !text) return;
     const btn = e.submitter; if(btn) btn.disabled = true;
     try{
       if(!DB) throw new Error('db');
       const img = newImg ? await upImg(newImg) : null;
-      if(id){ const d = {title, text}; if(img) d.img = img; await DB.doc('news/' + id).update(d); }
-      else { const nid = 'n' + Date.now(); await DB.doc('news/' + nid).set({title, text, img: img || ph('AMBALAN PRABU KRISNA'), date: new Date().toISOString().slice(0,10)}); }
+      if(id){ const d = {title, text, date}; if(img) d.img = img; await DB.doc('news/' + id).update(d); }
+      else { const nid = 'n' + Date.now(); await DB.doc('news/' + nid).set({title, text, img: img || ph('AMBALAN PRABU KRISNA'), date}); }
       resetForm(); toast('Berita tersimpan di database ✔');
     }catch(err){ $('#nErr').textContent = dbErr(err); }
     if(btn) btn.disabled = false;
@@ -698,7 +736,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   $('#adminNews').addEventListener('click', e => {
     if(!isAdmin) return;
     const ed = e.target.dataset.edit, dl = e.target.dataset.del;
-    if(ed){ const n = news.find(x => x.id === ed); $('#nId').value=n.id; $('#nTitle').value=n.title; $('#nText').value=n.text; $('#nPrev').src=n.img; $('#nPrev').style.display='block'; newImg=null; $('#pBerita').scrollIntoView({behavior:'smooth'}); }
+    if(ed){ const n = news.find(x => x.id === ed); $('#nId').value=n.id; $('#nTitle').value=n.title; $('#nDate').value=n.date || today(); $('#nText').value=n.text; $('#nPrev').src=n.img; $('#nPrev').style.display='block'; newImg=null; $('#pBerita').scrollIntoView({behavior:'smooth'}); }
     if(dl && confirm('Hapus berita ini?')){ if(!DB){ toast(dbErr()); return; } DB.doc('news/' + dl).delete().then(() => toast('Berita dihapus'), err => toast(dbErr(err))); }
   });
 
