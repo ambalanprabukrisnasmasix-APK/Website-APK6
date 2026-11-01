@@ -159,6 +159,19 @@ section{padding:90px 0;position:relative}
 .more{margin-top:auto;padding-top:10px;color:var(--red);font-weight:600;font-size:.85rem}
 .empty{text-align:center;color:var(--muted);padding:40px;grid-column:1/-1}
 
+/* GALERI & DEWAN */
+#galeri{background:linear-gradient(180deg,var(--cream),var(--sand))}
+.gal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(240px,100%),1fr));gap:18px}
+.g-item{position:relative;aspect-ratio:4/3;border-radius:18px;overflow:hidden;box-shadow:var(--shadow);border:1px solid var(--line);background:var(--sand);cursor:zoom-in;margin:0}
+.g-item img{width:100%;height:100%;object-fit:cover;transition:transform .6s}
+.g-item:hover img{transform:scale(1.08)}
+.g-item figcaption{position:absolute;left:0;right:0;bottom:0;padding:26px 14px 11px;color:#fff;font-size:.82rem;line-height:1.4;background:linear-gradient(0deg,rgba(43,23,16,.85),transparent)}
+.g-item.reveal{opacity:0;transform:none;transition:transform .35s}
+.g-item.reveal.show{opacity:1;animation:popIn .8s var(--d,0ms) cubic-bezier(.2,.8,.2,1) backwards}
+.g-item.reveal.show:hover{transform:translateY(-6px)}
+.gal-more{text-align:center;margin-top:30px}
+#dewan{background:var(--cream);padding-top:10px}
+
 /* FOOTER */
 footer{background:var(--brown-900);color:#d9c6b6;position:relative;padding-top:50px}
 footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;background:linear-gradient(90deg,var(--red),var(--gold),var(--red))}
@@ -257,6 +270,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       <li><a href="#krishna">Sri Krishna</a></li>
       <li><a href="#dasa">Dasa Dharma</a></li>
       <li><a href="#struktur">Struktur</a></li>
+      <li><a href="#galeri">Galeri</a></li>
       <li><a href="#berita">Berita</a></li>
     </ul></nav>
     <button class="burger" id="burger" aria-label="Menu" aria-expanded="false"><svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18"/></svg></button>
@@ -312,6 +326,24 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   </div>
 </section>
 
+<!-- DEWAN AMBALAN -->
+<section id="dewan">
+  <div class="container">
+    <div class="sec-head reveal"><small>Kepengurusan</small><h2>DEWAN AMBALAN PRABU KRISNA</h2><div class="orn">❖</div></div>
+    <div class="s-box reveal" id="cBox"><img id="councilImg" alt="Foto Dewan Ambalan Prabu Krisna"></div>
+    <p class="hint">Klik gambar untuk memperbesar</p>
+  </div>
+</section>
+
+<!-- GALERI -->
+<section id="galeri">
+  <div class="container">
+    <div class="sec-head reveal"><small>Dokumentasi</small><h2>Galeri Foto</h2><div class="orn">❖</div></div>
+    <div class="gal-grid" id="galGrid"></div>
+    <div class="gal-more"><button class="btn btn-r" id="galMore" style="display:none">Tampilkan Lebih Banyak</button></div>
+  </div>
+</section>
+
 <!-- BERITA -->
 <section id="berita">
   <div class="container">
@@ -336,6 +368,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
         <li><a href="#krishna">Sri Krishna</a></li>
         <li><a href="#dasa">Dasa Dharma</a></li>
         <li><a href="#struktur">Struktur</a></li>
+        <li><a href="#galeri">Galeri</a></li>
         <li><a href="#berita">Berita</a></li>
         <li><a href="#" id="loginLink" class="tiny">Masuk</a><a href="#" id="logoutLink" class="tiny" style="display:none">Keluar</a></li>
       </ul>
@@ -375,7 +408,9 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     <h3 class="t">Panel Admin</h3>
     <div class="tabs">
       <button class="tab active" data-tab="pBerita">Berita</button>
+      <button class="tab" data-tab="pGaleri">Galeri</button>
       <button class="tab" data-tab="pStruktur">Struktur</button>
+      <button class="tab" data-tab="pDewan">Foto Dewan</button>
       <button class="tab" data-tab="pKrishna">Gambar Krishna</button>
       <button class="tab" data-tab="pInfo">Lokasi & Sosmed</button>
       <button class="tab" data-tab="pPop">Informasi Tambahan</button>
@@ -396,12 +431,28 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       <div class="admin-list" id="adminNews"></div>
     </div>
 
+    <div class="pane" id="pGaleri">
+      <div class="field"><label>Tambah foto galeri (boleh pilih banyak foto sekaligus)</label><input type="file" id="gFile" accept="image/*" multiple></div>
+      <div class="field"><label>Keterangan (opsional, berlaku untuk semua foto yang dipilih)</label><input type="text" id="gCap" placeholder="Contoh: Upacara pelantikan"></div>
+      <div class="err" id="gErr"></div>
+      <button class="btn btn-r" id="gSave">Unggah Foto</button>
+      <div class="admin-list" id="adminGallery"></div>
+    </div>
+
     <div class="pane" id="pStruktur">
       <div class="field"><label>Unggah gambar struktur baru</label><input type="file" id="sFile" accept="image/*"></div>
       <img class="preview" id="sPrev" style="max-height:300px;width:100%" alt="">
       <div class="err" id="sErr"></div>
       <button class="btn btn-r" id="sSave">Simpan Struktur</button>
       <button class="btn btn-g" id="sReset">Kembalikan Bawaan</button>
+    </div>
+
+    <div class="pane" id="pDewan">
+      <div class="field"><label>Unggah foto Dewan Ambalan (tampil di bawah Struktur)</label><input type="file" id="cFile" accept="image/*"></div>
+      <img class="preview" id="cPrev" style="max-height:300px;width:100%" alt="">
+      <div class="err" id="cErr"></div>
+      <button class="btn btn-r" id="cSave">Simpan Foto Dewan</button>
+      <button class="btn btn-g" id="cReset">Hapus Foto</button>
     </div>
 
     <div class="pane" id="pKrishna">
@@ -482,6 +533,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   const ph = (t,a='#5a3422',b='#b3121a') => 'data:image/svg+xml,' + encodeURIComponent(
     `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="560"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${a}"/><stop offset="1" stop-color="${b}"/></linearGradient></defs><rect width="1000" height="560" fill="url(#g)"/><text x="500" y="295" font-family="Georgia,serif" font-weight="bold" font-size="52" fill="#fbe6c8" text-anchor="middle">${t}</text></svg>`);
   const STRUCT_DEF = ph('STRUKTUR AMBALAN BELUM DIUNGGAH','#2b1710','#820c12');
+  const COUNCIL_DEF = ph('FOTO DEWAN AMBALAN BELUM DIUNGGAH','#3d2216','#820c12');
 
   function compress(file, maxW, q){
     return new Promise((res, rej) => {
@@ -508,10 +560,12 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   ];
   const CACHE = LS.get('apk3_cache', {}) || {};
   let news = CACHE.news || defNews();
-  const S = { struct: CACHE.struct || null, krishna: CACHE.krishna || null, info: CACHE.info || {}, popup: null };
+  const S = { struct: CACHE.struct || null, krishna: CACHE.krishna || null, info: CACHE.info || {}, popup: null, council: null };
+  let GAL = [], galShown = 8, galSig = null;
   let popShown = false;
   const getStruct = () => S.struct || STRUCT_DEF;
   const getKrishna = () => S.krishna || KRISHNA_DEF;
+  const getCouncil = () => S.council || COUNCIL_DEF;
   const keep = () => LS.set('apk3_cache', { news: news.filter(n => !/^data:image\/jpeg/.test(n.img)), struct: S.struct, krishna: S.krishna, info: S.info });
   /* ---------- DATABASE (Firebase Realtime Database via REST) ---------- */
   const FB = (() => {
@@ -542,8 +596,10 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       S.krishna = site.krishna && site.krishna.url || null;
       S.info = site.info || {};
       S.popup = (site.popup && site.popup.img) ? site.popup : null;
-      keep(); renderImages(); renderNews(); renderInfo(); checkHash(); renderPopStatus(); showPopup();
-      if($('#mAdmin').classList.contains('open')) renderAdminNews();
+      S.council = site.council && site.council.url || null;
+      GAL = Object.entries(site.gallery || {}).map(([id, v]) => Object.assign({ id }, v)).filter(g => g && g.img).sort((a, b) => (b.t || 0) - (a.t || 0));
+      keep(); renderImages(); renderNews(); renderGallery(); renderInfo(); checkHash(); renderPopStatus(); showPopup();
+      if($('#mAdmin').classList.contains('open')){ renderAdminNews(); renderAdminGallery(); }
     }catch(_){ /* offline: tampilkan cache */ }
     syncing = false;
   }
@@ -603,6 +659,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     $('#adminFab').classList.toggle('on', isAdmin);
     $('#loginLink').style.display = isAdmin ? 'none' : '';
     $('#logoutLink').style.display = isAdmin ? '' : 'none';
+    renderCouncil();
   }
 
   /* ---------- INFO SANGGAR & SOSMED ---------- */
@@ -643,7 +700,23 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       </article>`).join('') : '<div class="empty">Belum ada berita yang cocok.</div>';
     $$('#newsGrid .reveal').forEach(el => io.observe(el));
   }
-  const renderImages = () => { $('#structImg').src = getStruct(); $('#krishnaImg').src = getKrishna(); };
+  const renderImages = () => { $('#structImg').src = getStruct(); $('#krishnaImg').src = getKrishna(); renderCouncil(); };
+  function renderCouncil(){
+    $('#councilImg').src = getCouncil();
+  }
+  function renderGallery(){
+    const sig = galShown + '#' + GAL.map(g => g.id + '|' + (g.cap || '')).join(',');
+    if(sig === galSig) return; galSig = sig;
+    const list = GAL.slice(0, galShown);
+    $('#galGrid').innerHTML = list.length ? list.map((g, i) => `<figure class="g-item reveal" style="--d:${(i%4)*110}ms" data-id="${esc(g.id)}"><img src="${esc(g.img)}" alt="${esc(g.cap || 'Foto galeri Ambalan Prabu Krisna')}" loading="lazy">${g.cap ? `<figcaption>${esc(g.cap)}</figcaption>` : ''}</figure>`).join('') : '<div class="empty">Belum ada foto galeri.</div>';
+    $('#galMore').style.display = GAL.length > galShown ? '' : 'none';
+    $$('#galGrid .reveal').forEach(el => io.observe(el));
+  }
+  function renderAdminGallery(){
+    $('#adminGallery').innerHTML = GAL.map(g => `
+      <div class="row"><img src="${esc(g.img)}" alt=""><b>${g.cap ? esc(g.cap) : '<span style="font-weight:400;color:var(--muted)">(tanpa keterangan)</span>'}</b>
+      <div class="acts"><button class="btn btn-g btn-sm" data-gedit="${esc(g.id)}">Ubah Ket.</button><button class="btn btn-r btn-sm" data-gdel="${esc(g.id)}">Hapus</button></div></div>`).join('') || '<div class="empty">Belum ada foto galeri.</div>';
+  }
   function renderAdminNews(){
     $('#adminNews').innerHTML = news.map(n => `
       <div class="row"><img src="${n.img}" alt=""><b>${esc(n.title)}<br><small style="font-weight:400;color:var(--muted)">${fmt(n.date)}</small></b>
@@ -710,10 +783,16 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     openNews(c.dataset.id);
   });
   $('#sBox').addEventListener('click', () => { $('#lightImg').src = getStruct(); open('#mLight'); });
+  $('#cBox').addEventListener('click', () => { $('#lightImg').src = getCouncil(); open('#mLight'); });
+  $('#galGrid').addEventListener('click', e => {
+    const f = e.target.closest('.g-item'); if(!f) return;
+    const g = GAL.find(x => x.id === f.dataset.id); if(g){ $('#lightImg').src = g.img; open('#mLight'); }
+  });
+  $('#galMore').addEventListener('click', () => { galShown += 8; renderGallery(); });
 
   function openAdmin(){
     fillPopForm(); renderPopStatus();
-    renderAdminNews(); $('#sPrev').src = getStruct(); $('#kPrev').src = getKrishna();
+    renderAdminNews(); renderAdminGallery(); $('#sPrev').src = getStruct(); $('#kPrev').src = getKrishna(); $('#cPrev').src = getCouncil();
     const i = getInfo(); $('#iAddr').value = i.addr; $('#iYt').value = i.yt; $('#iTt').value = i.tt; $('#iIg').value = i.ig;
     open('#mAdmin');
   }
@@ -797,6 +876,42 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   }
   imgPane('#sFile','#sPrev','#sErr','#sSave','#sReset','struct',1600,getStruct);
   imgPane('#kFile','#kPrev','#kErr','#kSave','#kReset','krishna',900,getKrishna);
+  imgPane('#cFile','#cPrev','#cErr','#cSave','#cReset','council',1600,getCouncil);
+
+  /* ---------- ADMIN: GALERI ---------- */
+  $('#gSave').addEventListener('click', async () => {
+    if(!isAdmin) return;
+    const files = [...$('#gFile').files];
+    if(!files.length){ $('#gErr').textContent = 'Pilih minimal satu foto.'; return; }
+    const btn = $('#gSave'), cap = $('#gCap').value.trim();
+    btn.disabled = true; $('#gErr').textContent = 'Memproses ' + files.length + ' foto...';
+    try{
+      const batch = {}, base = Date.now();
+      for(let i = 0; i < files.length; i++){
+        const img = await compress(files[i], 1000, .78);
+        batch['g' + (base + i)] = { img, cap, t: base + i };
+      }
+      await FB.patch('/site/gallery', batch);
+      GAL = Object.entries(batch).map(([id, v]) => Object.assign({ id }, v)).concat(GAL).sort((a, b) => (b.t || 0) - (a.t || 0));
+      renderGallery(); renderAdminGallery();
+      $('#gFile').value = ''; $('#gCap').value = ''; $('#gErr').textContent = '';
+      toast(files.length + ' foto ditambahkan ke galeri');
+      syncAll();
+    }catch(err){ $('#gErr').textContent = dbErr(err); }
+    btn.disabled = false;
+  });
+  $('#adminGallery').addEventListener('click', e => {
+    if(!isAdmin) return;
+    const ed = e.target.dataset.gedit, dl = e.target.dataset.gdel;
+    if(ed){
+      const g = GAL.find(x => x.id === ed); if(!g) return;
+      const v = prompt('Keterangan foto (kosongkan untuk menghapus keterangan):', g.cap || ''); if(v === null) return;
+      DB.doc('site/gallery/' + ed).update({ cap: v.trim() }).then(() => toast('Keterangan disimpan'), err => toast(dbErr(err)));
+    }
+    if(dl && confirm('Hapus foto ini dari galeri?')){
+      DB.doc('site/gallery/' + dl).delete().then(() => toast('Foto dihapus'), err => toast(dbErr(err)));
+    }
+  });
 
   /* ---------- INFORMASI TAMBAHAN (POP-UP) ---------- */
   function showPopup(){
@@ -893,7 +1008,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 
   $('#searchNews').addEventListener('input', renderNews);
   $('#yr').textContent = new Date().getFullYear();
-  renderImages(); renderNews(); renderInfo(); applyAuth();
+  renderImages(); renderNews(); renderGallery(); renderInfo(); applyAuth();
 
   /* ---------- SINKRON ---------- */
   syncAll();
