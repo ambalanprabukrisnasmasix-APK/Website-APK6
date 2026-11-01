@@ -172,6 +172,8 @@ section{padding:90px 0;position:relative}
 .g-item.reveal.show{opacity:1;animation:popIn .8s var(--d,0ms) cubic-bezier(.2,.8,.2,1) backwards}
 .g-item.reveal.show:hover{transform:translateY(-6px)}
 .gal-more{text-align:center;margin-top:30px}
+.gal-modal-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(170px,100%),1fr));gap:12px}
+.gal-modal-grid .g-item{width:100%;border-radius:14px}
 @media(max-width:560px){.g-item{width:calc(50% - 9px)}}
 #dewan .s-box{margin-left:auto;margin-right:auto}
 #dewan .sec-head,#dewan .hint{text-align:center}
@@ -350,7 +352,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   <div class="container">
     <div class="sec-head reveal"><small>Dokumentasi</small><h2>Galeri Foto</h2><div class="orn">❖</div></div>
     <div class="gal-grid" id="galGrid"></div>
-    <div class="gal-more"><button class="btn btn-r" id="galMore" style="display:none">Tampilkan Lebih Banyak</button></div>
+    <div class="gal-more"><button class="btn btn-r" id="galMore" style="display:none">Lihat Selengkapnya</button></div>
   </div>
 </section>
 
@@ -442,6 +444,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     </div>
 
     <div class="pane" id="pGaleri">
+      <p class="hint" id="gCount" style="text-align:left;margin:0 0 14px"></p>
       <div class="field"><label>Tambah foto galeri (boleh pilih banyak foto sekaligus)</label><input type="file" id="gFile" accept="image/*" multiple></div>
       <div class="field"><label>Keterangan (opsional, berlaku untuk semua foto yang dipilih)</label><input type="text" id="gCap" placeholder="Contoh: Upacara pelantikan"></div>
       <div class="err" id="gErr"></div>
@@ -498,6 +501,13 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   </div>
 </div>
 
+<div class="modal" id="mGal">
+  <div class="box wide">
+    <button class="close" data-close>✕</button>
+    <h3 class="t">Galeri Foto</h3>
+    <div class="gal-modal-grid" id="galAll"></div>
+  </div>
+</div>
 <div class="modal" id="mRead"><div class="box wide read"><button class="close" data-close>✕</button><div id="readBody"></div></div></div>
 <div class="modal" id="mPop"><div class="box pop"><button class="close" id="popClose" aria-label="Tutup">✕</button><div id="popBody"></div></div></div>
 <div class="modal lightbox" id="mLight"><button class="close" data-close>✕</button><img id="lightImg" alt=""></div>
@@ -571,7 +581,8 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   const CACHE = LS.get('apk3_cache', {}) || {};
   let news = CACHE.news || defNews();
   const S = { struct: CACHE.struct || null, krishna: CACHE.krishna || null, info: CACHE.info || {}, popup: null, council: null };
-  let GAL = [], galShown = 8, galSig = null;
+  const GAL_SHOW = 6, GAL_MAX = 15;
+  let GAL = [], galSig = null;
   let popShown = false;
   const getStruct = () => S.struct || STRUCT_DEF;
   const getKrishna = () => S.krishna || KRISHNA_DEF;
@@ -715,14 +726,19 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     $('#councilImg').src = getCouncil();
   }
   function renderGallery(){
-    const sig = galShown + '#' + GAL.map(g => g.id + '|' + (g.cap || '')).join(',');
+    const sig = GAL_SHOW + '#' + GAL.map(g => g.id + '|' + (g.cap || '')).join(',');
     if(sig === galSig) return; galSig = sig;
-    const list = GAL.slice(0, galShown);
+    const list = GAL.slice(0, GAL_SHOW);
     $('#galGrid').innerHTML = list.length ? list.map((g, i) => `<figure class="g-item reveal" style="--d:${(i%4)*110}ms" data-id="${esc(g.id)}"><img src="${esc(g.img)}" alt="${esc(g.cap || 'Foto galeri Ambalan Prabu Krisna')}" loading="lazy">${g.cap ? `<figcaption>${esc(g.cap)}</figcaption>` : ''}</figure>`).join('') : '<div class="empty">Belum ada foto galeri.</div>';
-    $('#galMore').style.display = GAL.length > galShown ? '' : 'none';
+    $('#galMore').style.display = GAL.length > GAL_SHOW ? '' : 'none';
+    if($('#mGal').classList.contains('open')) renderGalAll();
     $$('#galGrid .reveal').forEach(el => io.observe(el));
   }
+  function renderGalAll(){
+    $('#galAll').innerHTML = GAL.map(g => `<figure class="g-item" data-id="${esc(g.id)}"><img src="${esc(g.img)}" alt="${esc(g.cap || 'Foto galeri Ambalan Prabu Krisna')}" loading="lazy">${g.cap ? `<figcaption>${esc(g.cap)}</figcaption>` : ''}</figure>`).join('');
+  }
   function renderAdminGallery(){
+    $('#gCount').textContent = 'Jumlah foto: ' + GAL.length + ' dari maksimal ' + GAL_MAX + ' foto.';
     $('#adminGallery').innerHTML = GAL.map(g => `
       <div class="row"><img src="${esc(g.img)}" alt=""><b>${g.cap ? esc(g.cap) : '<span style="font-weight:400;color:var(--muted)">(tanpa keterangan)</span>'}</b>
       <div class="acts"><button class="btn btn-g btn-sm" data-gedit="${esc(g.id)}">Ubah Ket.</button><button class="btn btn-r btn-sm" data-gdel="${esc(g.id)}">Hapus</button></div></div>`).join('') || '<div class="empty">Belum ada foto galeri.</div>';
@@ -794,11 +810,19 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   });
   $('#sBox').addEventListener('click', () => { $('#lightImg').src = getStruct(); open('#mLight'); });
   $('#cBox').addEventListener('click', () => { $('#lightImg').src = getCouncil(); open('#mLight'); });
-  $('#galGrid').addEventListener('click', e => {
+  const openGalImg = e => {
     const f = e.target.closest('.g-item'); if(!f) return;
     const g = GAL.find(x => x.id === f.dataset.id); if(g){ $('#lightImg').src = g.img; open('#mLight'); }
-  });
-  $('#galMore').addEventListener('click', () => { galShown += 8; renderGallery(); });
+  };
+  $('#galGrid').addEventListener('click', openGalImg);
+  $('#galAll').addEventListener('click', openGalImg);
+  $('#galMore').addEventListener('click', () => { renderGalAll(); open('#mGal'); });
+  // menutup foto besar dari jendela galeri: kembali ke jendela galeri, bukan menutup semuanya
+  $('#mLight').addEventListener('click', e => {
+    if($('#mGal').classList.contains('open') && (e.target === $('#mLight') || e.target.closest('[data-close]'))){
+      $('#mLight').classList.remove('open'); e.stopImmediatePropagation();
+    }
+  }, true);
 
   function openAdmin(){
     fillPopForm(); renderPopStatus();
@@ -893,12 +917,15 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     if(!isAdmin) return;
     const files = [...$('#gFile').files];
     if(!files.length){ $('#gErr').textContent = 'Pilih minimal satu foto.'; return; }
+    const room = GAL_MAX - GAL.length;
+    if(room <= 0){ $('#gErr').textContent = 'Galeri sudah penuh (maksimal ' + GAL_MAX + ' foto). Hapus foto lama dulu.'; return; }
+    if(files.length > room){ $('#gErr').textContent = 'Maksimal ' + GAL_MAX + ' foto. Kamu hanya bisa menambah ' + room + ' foto lagi, kamu memilih ' + files.length + '.'; return; }
     const btn = $('#gSave'), cap = $('#gCap').value.trim();
     btn.disabled = true; $('#gErr').textContent = 'Memproses ' + files.length + ' foto...';
     try{
       const batch = {}, base = Date.now();
       for(let i = 0; i < files.length; i++){
-        const img = await compress(files[i], 1000, .78);
+        const img = await compress(files[i], 900, .75);
         batch['g' + (base + i)] = { img, cap, t: base + i };
       }
       await FB.patch('/site/gallery', batch);
