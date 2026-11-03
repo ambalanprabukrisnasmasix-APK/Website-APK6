@@ -6,6 +6,10 @@
 <meta name="theme-color" content="#2b1710">
 <title>Ambalan Prabu Krisna – Gudep 02.077 & 02.078 SMAN 6 Madiun</title>
 <meta name="description" content="Website resmi Ambalan Prabu Krisna, Gugus Depan 02.077 - 02.078 Pangkalan SMAN 6 Madiun.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Ambalan Prabu Krisna">
+<meta property="og:title" content="Ambalan Prabu Krisna – Gudep 02.077 & 02.078 SMAN 6 Madiun">
+<meta property="og:description" content="Website resmi Ambalan Prabu Krisna, Gugus Depan 02.077 - 02.078 Pangkalan SMAN 6 Madiun.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -334,7 +338,6 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   <div class="container">
     <div class="sec-head reveal"><small>Kepengurusan</small><h2>Struktur Ambalan</h2><div class="orn">❖</div></div>
     <div class="s-box reveal" id="sBox"><img id="structImg" alt="Struktur Ambalan Prabu Krisna"></div>
-    <p class="hint">Klik gambar untuk memperbesar</p>
   </div>
 </section>
 
@@ -343,7 +346,6 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   <div class="container">
     <div class="sec-head reveal"><small>Kepengurusan</small><h2>DEWAN AMBALAN PRABU KRISNA</h2><div class="orn">❖</div></div>
     <div class="s-box reveal" id="cBox"><img id="councilImg" alt="Foto Dewan Ambalan Prabu Krisna"></div>
-    <p class="hint">Klik gambar untuk memperbesar</p>
   </div>
 </section>
 
@@ -360,8 +362,8 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 <section id="berita">
   <div class="container">
     <div class="sec-head reveal"><small>Kabar Terbaru</small><h2>Berita Kegiatan</h2><div class="orn">❖</div></div>
-    <div class="search reveal"><input type="text" id="searchNews" placeholder="Cari berita kegiatan..."></div>
     <div class="news-grid" id="newsGrid"></div>
+    <div class="gal-more"><button class="btn btn-r" id="newsMore" style="display:none">Lihat Selengkapnya</button></div>
   </div>
 </section>
 
@@ -508,6 +510,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     <div class="gal-modal-grid" id="galAll"></div>
   </div>
 </div>
+<div class="modal" id="mNews"><div class="box wide"><button class="close" data-close>✕</button><h3 class="t">Semua Berita</h3><div class="search"><input type="text" id="searchNews" placeholder="Cari berita kegiatan..."></div><div class="news-grid" id="newsAll"></div></div></div>
 <div class="modal" id="mRead"><div class="box wide read"><button class="close" data-close>✕</button><div id="readBody"></div></div></div>
 <div class="modal" id="mPop"><div class="box pop"><button class="close" id="popClose" aria-label="Tutup">✕</button><div id="popBody"></div></div></div>
 <div class="modal lightbox" id="mLight"><button class="close" data-close>✕</button><img id="lightImg" alt=""></div>
@@ -581,7 +584,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   const CACHE = LS.get('apk3_cache', {}) || {};
   let news = CACHE.news || defNews();
   const S = { struct: CACHE.struct || null, krishna: CACHE.krishna || null, info: CACHE.info || {}, popup: null, council: null };
-  const GAL_SHOW = 6, GAL_MAX = 15;
+  const GAL_SHOW = 6, GAL_MAX = 25;
   let GAL = [], galSig = null;
   let popShown = false;
   const getStruct = () => S.struct || STRUCT_DEF;
@@ -706,10 +709,8 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 
   /* ---------- RENDER ---------- */
   const fmt = d => new Date(d + 'T00:00:00').toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
-  function renderNews(){
-    const q = $('#searchNews').value.trim().toLowerCase();
-    const list = news.filter(n => (n.title + ' ' + n.text).toLowerCase().includes(q));
-    $('#newsGrid').innerHTML = list.length ? list.map((n,i) => `
+  const NEWS_SHOW = 3;
+  const newsCard = (n, i) => `
       <article class="news reveal" style="--d:${(i%3)*130}ms" data-id="${n.id}">
         <div class="img"><img src="${n.img}" alt="${esc(n.title)}" loading="lazy"><span class="date">${fmt(n.date)}</span></div>
         <div class="body">
@@ -718,8 +719,18 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
           <p>${esc(n.text)}</p>
           <div class="mrow"><span class="more">Baca selengkapnya →</span><button class="sbtn" data-share="${n.id}" aria-label="Bagikan berita" title="Bagikan"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg></button></div>
         </div>
-      </article>`).join('') : '<div class="empty">Belum ada berita yang cocok.</div>';
+      </article>`;
+  function renderNews(){
+    $('#newsGrid').innerHTML = news.length ? news.slice(0, NEWS_SHOW).map(newsCard).join('') : '<div class="empty">Belum ada berita.</div>';
+    $('#newsMore').style.display = news.length > NEWS_SHOW ? '' : 'none';
     $$('#newsGrid .reveal').forEach(el => io.observe(el));
+    if($('#mNews').classList.contains('open')) renderNewsAll();
+  }
+  function renderNewsAll(){
+    const q = $('#searchNews').value.trim().toLowerCase();
+    const list = news.filter(n => (n.title + ' ' + n.text).toLowerCase().includes(q));
+    $('#newsAll').innerHTML = list.length ? list.map(newsCard).join('') : '<div class="empty">Belum ada berita yang cocok.</div>';
+    $$('#newsAll .reveal').forEach(el => el.classList.add('show'));
   }
   const renderImages = () => { $('#structImg').src = getStruct(); $('#krishnaImg').src = getKrishna(); renderCouncil(); };
   function renderCouncil(){
@@ -750,11 +761,51 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   }
 
   /* ---------- MODALS ---------- */
-  const open = id => $(id).classList.add('open'), closeAll = () => { $$('.modal').forEach(m => { if(m.id !== 'mPop') m.classList.remove('open'); }); if(/^#berita-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); };
-  $$('[data-close]').forEach(b => b.addEventListener('click', closeAll));
-  $$('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m && m.id !== 'mPop') closeAll(); }));
-  $('#popClose').addEventListener('click', () => $('#mPop').classList.remove('open'));
-  addEventListener('keydown', e => { if(e.key === 'Escape') closeAll(); });
+  /* Tombol Back (navigasi kembali) menutup jendela, bukan keluar dari website */
+  try{ history.scrollRestoration = 'manual'; }catch(_){}
+  const mStack = [];            // jendela yang sedang terbuka (urutan buka)
+  let traversing = false, waitOpen = [], travTimer = null;
+  const stripHash = () => { if(/^#berita-/.test(location.hash)) history.replaceState(null, '', location.pathname + location.search); };
+  const open = id => {
+    if(traversing){ waitOpen.push(id); return; }
+    const el = $(id); if(el.classList.contains('open')) return;
+    el.classList.add('open');
+    mStack.push(id);
+    history.pushState({apkModal:1}, '', location.href);
+  };
+  const endTraverse = () => {
+    clearTimeout(travTimer); traversing = false;
+    const q = waitOpen; waitOpen = []; q.forEach(open);
+  };
+  const goBack = n => {
+    if(n < 1) return;
+    traversing = true;
+    clearTimeout(travTimer); travTimer = setTimeout(endTraverse, 500);
+    history.go(-n);
+  };
+  // tutup jendela paling atas
+  const closeTop = () => {
+    const id = mStack.pop(); if(!id) return;
+    $(id).classList.remove('open');
+    goBack(1);
+  };
+  // tutup semua jendela (kecuali pop-up informasi)
+  const closeAll = () => {
+    let n = 0;
+    while(mStack.length && mStack[mStack.length-1] !== '#mPop'){ $(mStack.pop()).classList.remove('open'); n++; }
+    $$('.modal').forEach(m => { if(m.id !== 'mPop') m.classList.remove('open'); });
+    if(n) goBack(n); else stripHash();
+  };
+  addEventListener('popstate', () => {
+    if(traversing){ stripHash(); endTraverse(); return; }
+    // tombol Back ditekan pengunjung: tutup jendela paling atas
+    const id = mStack.pop();
+    if(id) $(id).classList.remove('open');
+  });
+  $$('[data-close]').forEach(b => b.addEventListener('click', closeTop));
+  $$('.modal').forEach(m => m.addEventListener('click', e => { if(e.target === m && m.id !== 'mPop') closeTop(); }));
+  $('#popClose').addEventListener('click', () => { const i = mStack.lastIndexOf('#mPop'); if(i === mStack.length-1) closeTop(); else { $('#mPop').classList.remove('open'); if(i > -1) mStack.splice(i,1); } });
+  addEventListener('keydown', e => { if(e.key === 'Escape') closeTop(); });
 
   /* ---------- KUNCI SCROLL HALAMAN SAAT JENDELA TERBUKA ---------- */
   let locked = false, lockY = 0;
@@ -803,11 +854,14 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     if(sh) shareNews(sh.dataset.share);
     if(cp) toast((await copyText(newsUrl(cp.dataset.copy))) ? 'Link berita disalin' : 'Salin manual: ' + newsUrl(cp.dataset.copy));
   });
-  $('#newsGrid').addEventListener('click', e => {
+  const newsClick = e => {
     const sh = e.target.closest('[data-share]'); if(sh){ e.stopPropagation(); shareNews(sh.dataset.share); return; }
     const c = e.target.closest('.news'); if(!c) return;
     openNews(c.dataset.id);
-  });
+  };
+  $('#newsGrid').addEventListener('click', newsClick);
+  $('#newsAll').addEventListener('click', newsClick);
+  $('#newsMore').addEventListener('click', () => { $('#searchNews').value = ''; renderNewsAll(); open('#mNews'); });
   $('#sBox').addEventListener('click', () => { $('#lightImg').src = getStruct(); open('#mLight'); });
   $('#cBox').addEventListener('click', () => { $('#lightImg').src = getCouncil(); open('#mLight'); });
   const openGalImg = e => {
@@ -820,7 +874,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   // menutup foto besar dari jendela galeri: kembali ke jendela galeri, bukan menutup semuanya
   $('#mLight').addEventListener('click', e => {
     if($('#mGal').classList.contains('open') && (e.target === $('#mLight') || e.target.closest('[data-close]'))){
-      $('#mLight').classList.remove('open'); e.stopImmediatePropagation();
+      e.stopImmediatePropagation(); closeTop();
     }
   }, true);
 
@@ -1043,7 +1097,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   const hl = $('.hero img.logo');
   addEventListener('pointermove', e => { if(scrollY < innerHeight && matchMedia('(pointer:fine)').matches){ const x = (e.clientX/innerWidth - .5) * 14, y = (e.clientY/innerHeight - .5) * 10; hl.style.translate = x + 'px ' + y + 'px'; } }, {passive:true});
 
-  $('#searchNews').addEventListener('input', renderNews);
+  $('#searchNews').addEventListener('input', renderNewsAll);
   $('#yr').textContent = new Date().getFullYear();
   renderImages(); renderNews(); renderGallery(); renderInfo(); applyAuth();
 
