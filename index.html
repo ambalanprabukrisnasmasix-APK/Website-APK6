@@ -10,6 +10,10 @@
 <meta property="og:site_name" content="Ambalan Prabu Krisna">
 <meta property="og:title" content="Ambalan Prabu Krisna – Gudep 02.077 & 02.078 SMAN 6 Madiun">
 <meta property="og:description" content="Website resmi Ambalan Prabu Krisna, Gugus Depan 02.077 - 02.078 Pangkalan SMAN 6 Madiun.">
+<meta property="og:url" content="https://ambalanprabukrisna.my.id/">
+<meta name="robots" content="index, follow">
+<link rel="canonical" href="https://ambalanprabukrisna.my.id/">
+<meta name="google-site-verification" content="GANTI_DENGAN_KODE_DARI_GOOGLE">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700;800&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -407,9 +411,9 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   <div class="box">
     <button class="close" data-close>✕</button>
     <h3 class="t">Login Admin</h3>
-    <form id="loginForm" autocomplete="off">
-      <div class="field"><label>Username</label><input type="text" id="lUser" autocomplete="off" required></div>
-      <div class="field"><label>Password</label><input type="password" id="lPass" autocomplete="off" required></div>
+    <form id="loginForm" autocomplete="on">
+      <div class="field"><label>Email Admin</label><input type="text" id="lUser" inputmode="email" autocomplete="username" required></div>
+      <div class="field"><label>Password</label><input type="password" id="lPass" autocomplete="current-password" required></div>
       <div class="err" id="lErr"></div>
       <button class="btn btn-r" style="width:100%;justify-content:center" id="lBtn">Masuk</button>
     </form>
@@ -496,7 +500,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     </div>
 
     <div class="pane" id="pSetting">
-      <div class="field"><label>Password baru (minimal 8 karakter)</label><input type="password" id="newPass" autocomplete="new-password"></div>
+      <div class="field"><label>Password baru (minimal 12 karakter, disarankan acak)</label><input type="password" id="newPass" autocomplete="new-password"></div>
       <div class="err" id="pErr"></div>
       <button class="btn btn-r" id="passSave">Ubah Password</button>
     </div>
@@ -591,13 +595,97 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   const getKrishna = () => S.krishna || KRISHNA_DEF;
   const getCouncil = () => S.council || COUNCIL_DEF;
   const keep = () => LS.set('apk3_cache', { news: news.filter(n => !/^data:image\/jpeg/.test(n.img)), struct: S.struct, krishna: S.krishna, info: S.info });
+  /* ---------- AUTH (Firebase Authentication: tidak ada password atau hash di kode) ---------- */
+  // Isi dengan "Web API Key" dari Firebase Console > Project settings > General.
+  // Key ini memang publik. Yang melindungi data adalah akun admin + Rules Firebase (lihat firebase-rules.json).
+  const FIREBASE_API_KEY = 'AIzaSyDwAU91DOyhUZL64lJLB7IRKGuaw6VnH-A';
+  const AUTH_URL = 'https://identitytoolkit.googleapis.com/v1/accounts';
+  const TOKEN_URL = 'https://securetoken.googleapis.com/v1/token';
+  const RT_KEY = 'apk4_rt', LOCK_KEY = 'apk4_lock';
+  let session = null, isAdmin = false, curUser = '';
+  try{ sessionStorage.removeItem('apk2_admin'); sessionStorage.removeItem('apk2_user'); localStorage.removeItem('apk2_hash'); }catch(_){}
+  const authMsg = {
+    INVALID_LOGIN_CREDENTIALS:'Email atau password salah.', INVALID_PASSWORD:'Email atau password salah.', EMAIL_NOT_FOUND:'Email atau password salah.',
+    INVALID_EMAIL:'Format email tidak valid.', USER_DISABLED:'Akun ini dinonaktifkan.',
+    TOO_MANY_ATTEMPTS_TRY_LATER:'Terlalu banyak percobaan. Coba lagi beberapa menit lagi.',
+    WEAK_PASSWORD:'Password terlalu lemah.', OPERATION_NOT_ALLOWED:'Login email/password belum diaktifkan di Firebase.',
+    CREDENTIAL_TOO_OLD_LOGIN_AGAIN:'Sesi terlalu lama. Keluar, masuk lagi, lalu ganti password.',
+    TOKEN_EXPIRED:'Sesi berakhir. Silakan masuk lagi.', INVALID_REFRESH_TOKEN:'Sesi berakhir. Silakan masuk lagi.'
+  };
+  async function authCall(url, init){
+    if(!FIREBASE_API_KEY) throw new Error('Login admin belum dikonfigurasi: isi FIREBASE_API_KEY di index.html.');
+    let r;
+    try{ r = await fetch(url + (url.indexOf('?') < 0 ? '?' : '&') + 'key=' + encodeURIComponent(FIREBASE_API_KEY), init); }
+    catch(_){ throw new Error('Tidak ada koneksi internet.'); }
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok){
+      const code = String((j.error && j.error.message) || '').split(/[ :]/)[0];
+      const e = new Error(authMsg[code] || 'Login gagal (' + (code || r.status) + ').'); e.code = code; throw e;
+    }
+    return j;
+  }
+  const jwtEmail = t => { try{ return JSON.parse(atob(t.split('.')[1].replace(/-/g,'+').replace(/_/g,'/'))).email || ''; }catch(_){ return ''; } };
+  function setSession(j){
+    const idToken = j.idToken || j.id_token, rt = j.refreshToken || j.refresh_token, sec = parseInt(j.expiresIn || j.expires_in, 10) || 3600;
+    session = { idToken, rt, exp: Date.now() + sec * 1000 };
+    curUser = j.email || jwtEmail(idToken); isAdmin = true;
+    try{ sessionStorage.setItem(RT_KEY, rt); }catch(_){}
+  }
+  function clearSession(){ session = null; isAdmin = false; curUser = ''; try{ sessionStorage.removeItem(RT_KEY); }catch(_){} }
+  let refreshing = null;
+  function refreshSession(rt){
+    if(!refreshing) refreshing = authCall(TOKEN_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body:'grant_type=refresh_token&refresh_token=' + encodeURIComponent(rt) })
+      .then(j => { setSession(j); return session; }).finally(() => { refreshing = null; });
+    return refreshing;
+  }
+  async function getToken(){
+    if(!session) return null;
+    if(Date.now() > session.exp - 60000){
+      try{ await refreshSession(session.rt); }catch(_){ clearSession(); applyAuth(); return null; }
+    }
+    return session.idToken;
+  }
+  // Status admin hanya dari token Firebase yang valid, bukan dari penanda di sessionStorage.
+  async function restoreSession(){
+    let rt = null; try{ rt = sessionStorage.getItem(RT_KEY); }catch(_){}
+    if(!rt || !FIREBASE_API_KEY) return;
+    try{ await refreshSession(rt); }catch(_){ clearSession(); }
+    applyAuth();
+  }
+  // Penguncian setelah gagal login berulang (tambahan di sisi browser; Firebase juga membatasi percobaan di servernya).
+  const lockGet = () => LS.get(LOCK_KEY, null) || { n:0, until:0 };
+  const lockLeft = () => Math.max(0, Math.ceil((lockGet().until - Date.now()) / 1000));
+  function lockFail(){ const l = lockGet(); l.n++; if(l.n >= 5) l.until = Date.now() + Math.min(900, 30 * Math.pow(2, l.n - 5)) * 1000; LS.set(LOCK_KEY, l); }
+  const lockClear = () => LS.del(LOCK_KEY);
+  let lockTimer = null;
+  function showLock(){
+    clearInterval(lockTimer);
+    const tick = () => {
+      const t = lockLeft(), btn = $('#lBtn');
+      if(t <= 0){ clearInterval(lockTimer); btn.disabled = false; if(/Terlalu banyak percobaan gagal/.test($('#lErr').textContent)) $('#lErr').textContent = ''; return false; }
+      btn.disabled = true;
+      $('#lErr').textContent = 'Terlalu banyak percobaan gagal. Coba lagi dalam ' + (t > 60 ? Math.ceil(t / 60) + ' menit' : t + ' detik') + '.';
+      return true;
+    };
+    if(tick()) lockTimer = setInterval(tick, 1000);
+  }
+
   /* ---------- DATABASE (Firebase Realtime Database via REST) ---------- */
   const FB = (() => {
     const q = ['WZ39yL6MHc0RHa','wADMiFWLlRXazJ','nctQHb1FmZlRWL','vNXLhl2ch5iYkR','mZuEDdzFWZoRXd','hRXYkV2chJWZyl','=AHch5SZzFmY'];
     const base = atob(q.map(x => x.split('').reverse().join('')).join('')) + '/ambalan';
     const call = async (m, path, body) => {
-      const r = await fetch(base + path + '.json', { method: m, body: body === undefined ? undefined : JSON.stringify(body) });
-      if(!r.ok) throw new Error('Server menolak (' + r.status + '). Periksa Rules Firebase.');
+      let qs = '';
+      if(m !== 'GET'){
+        const tk = await getToken();
+        if(!tk) throw new Error('Sesi admin berakhir. Silakan masuk lagi.');
+        qs = '?auth=' + encodeURIComponent(tk);
+      }
+      const r = await fetch(base + path + '.json' + qs, { method: m, body: body === undefined ? undefined : JSON.stringify(body) });
+      if(!r.ok){
+        if(r.status === 401 || r.status === 403) throw new Error('Ditolak server: hanya akun admin yang boleh mengubah data.');
+        throw new Error('Server menolak (' + r.status + '). Periksa Rules Firebase.');
+      }
       return r.json();
     };
     return { get: p => call('GET', p), set: (p, v) => call('PUT', p, v), patch: (p, v) => call('PATCH', p, v), del: p => call('DELETE', p) };
@@ -634,51 +722,6 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     delete: wr(() => FB.del('/' + path))
   }) };
 
-  /* ---------- AUTH (kredensial tidak ditulis di kode; hanya hash PBKDF2) ---------- */
-  // SHA-256 murni JavaScript: tidak bergantung pada WebCrypto, jadi login jalan di semua browser/HP
-  const K256 = new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
-  function sha256(msg){
-    const l = msg.length, total = ((l + 9 + 63) >> 6) << 6, buf = new Uint8Array(total);
-    buf.set(msg); buf[l] = 0x80;
-    const dv = new DataView(buf.buffer); dv.setUint32(total - 4, (l * 8) >>> 0); dv.setUint32(total - 8, Math.floor(l / 536870912));
-    let h0=0x6a09e667,h1=0xbb67ae85,h2=0x3c6ef372,h3=0xa54ff53a,h4=0x510e527f,h5=0x9b05688c,h6=0x1f83d9ab,h7=0x5be0cd19;
-    const w = new Uint32Array(64);
-    for(let o = 0; o < total; o += 64){
-      for(let i = 0; i < 16; i++) w[i] = dv.getUint32(o + i * 4);
-      for(let i = 16; i < 64; i++){
-        const a = w[i-15], b = w[i-2];
-        const s0 = ((a>>>7)|(a<<25)) ^ ((a>>>18)|(a<<14)) ^ (a>>>3);
-        const s1 = ((b>>>17)|(b<<15)) ^ ((b>>>19)|(b<<13)) ^ (b>>>10);
-        w[i] = (w[i-16] + s0 + w[i-7] + s1) | 0;
-      }
-      let a=h0,b=h1,c=h2,d=h3,e=h4,f=h5,g=h6,h=h7;
-      for(let i = 0; i < 64; i++){
-        const S1 = ((e>>>6)|(e<<26)) ^ ((e>>>11)|(e<<21)) ^ ((e>>>25)|(e<<7));
-        const ch = (e & f) ^ (~e & g);
-        const t1 = (h + S1 + ch + K256[i] + w[i]) | 0;
-        const S0 = ((a>>>2)|(a<<30)) ^ ((a>>>13)|(a<<19)) ^ ((a>>>22)|(a<<10));
-        const mj = (a & b) ^ (a & c) ^ (b & c);
-        const t2 = (S0 + mj) | 0;
-        h=g; g=f; f=e; e=(d + t1) | 0; d=c; c=b; b=a; a=(t1 + t2) | 0;
-      }
-      h0=(h0+a)|0;h1=(h1+b)|0;h2=(h2+c)|0;h3=(h3+d)|0;h4=(h4+e)|0;h5=(h5+f)|0;h6=(h6+g)|0;h7=(h7+h)|0;
-    }
-    const out = new Uint8Array(32), ov = new DataView(out.buffer);
-    [h0,h1,h2,h3,h4,h5,h6,h7].forEach((v,i) => ov.setUint32(i*4, v >>> 0));
-    return out;
-  }
-  const SALT = 'apk-prabukrisna-salt-2026', ITER = 30000;
-  const DEF_HASH = '11aa39109d9504797cb28a57744b44d3dd1d431db5311b9518234b573e5b14fa';
-  const enc = s => new TextEncoder().encode(s);
-  const cat = (a, b) => { const r = new Uint8Array(a.length + b.length); r.set(a); r.set(b, a.length); return r; };
-  function derive(user, pass){
-    const salt = enc(SALT);
-    let h = sha256(enc(SALT + '|' + user + ':' + pass));
-    for(let i = 0; i < ITER; i++) h = sha256(cat(h, salt));
-    return [...h].map(b => b.toString(16).padStart(2,'0')).join('');
-  }
-  const getHash = () => LS.get('apk2_hash', null) || DEF_HASH;
-  let isAdmin = sessionStorage.getItem('apk2_admin') === '1', curUser = sessionStorage.getItem('apk2_user') || '';
   function applyAuth(){
     $('#adminFab').classList.toggle('on', isAdmin);
     $('#loginLink').style.display = isAdmin ? 'none' : '';
@@ -884,25 +927,26 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     const i = getInfo(); $('#iAddr').value = i.addr; $('#iYt').value = i.yt; $('#iTt').value = i.tt; $('#iIg').value = i.ig;
     open('#mAdmin');
   }
-  $('#loginLink').addEventListener('click', e => { e.preventDefault(); $('#lErr').textContent=''; open('#mLogin'); setTimeout(() => $('#lUser').focus(), 100); });
-  $('#logoutLink').addEventListener('click', e => { e.preventDefault(); isAdmin = false; curUser=''; sessionStorage.removeItem('apk2_admin'); sessionStorage.removeItem('apk2_user'); applyAuth(); closeAll(); toast('Berhasil keluar'); });
+  $('#loginLink').addEventListener('click', e => { e.preventDefault(); $('#lErr').textContent=''; open('#mLogin'); if(lockLeft() > 0) showLock(); setTimeout(() => $('#lUser').focus(), 100); });
+  $('#logoutLink').addEventListener('click', e => { e.preventDefault(); clearSession(); applyAuth(); closeAll(); toast('Berhasil keluar'); });
   $('#adminFab').addEventListener('click', openAdmin);
   $('#social').addEventListener('click', e => { const a = e.target.closest('a[data-empty]'); if(a){ e.preventDefault(); toast('Link sosial media belum diatur'); } });
-  $('#loginForm').addEventListener('submit', e => {
+  $('#loginForm').addEventListener('submit', async e => {
     e.preventDefault();
+    if(lockLeft() > 0){ showLock(); return; }
     const btn = $('#lBtn'); btn.disabled = true; btn.textContent = 'Memeriksa...';
-    // jeda singkat agar tombol sempat berubah sebelum perhitungan hash
-    setTimeout(() => {
-      try{
-        const u = $('#lUser').value.trim(), p = $('#lPass').value;
-        if(derive(u, p) === getHash()){
-          isAdmin = true; curUser = u;
-          try{ sessionStorage.setItem('apk2_admin','1'); sessionStorage.setItem('apk2_user',u); }catch(_){}
-          $('#lUser').value = ''; $('#lPass').value = ''; applyAuth(); closeAll(); toast('Berhasil masuk. Selamat datang, Admin!'); openAdmin();
-        } else $('#lErr').textContent = 'Username atau password salah.';
-      }catch(err){ $('#lErr').textContent = 'Terjadi kesalahan. Muat ulang halaman lalu coba lagi.'; }
-      btn.disabled = false; btn.textContent = 'Masuk';
-    }, 30);
+    try{
+      const u = $('#lUser').value.trim(), p = $('#lPass').value;
+      const j = await authCall(AUTH_URL + ':signInWithPassword', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email:u, password:p, returnSecureToken:true }) });
+      setSession(j); lockClear();
+      $('#lUser').value = ''; $('#lPass').value = ''; $('#lErr').textContent = '';
+      applyAuth(); closeAll(); toast('Berhasil masuk. Selamat datang, Admin!'); openAdmin();
+    }catch(err){
+      if(/^(INVALID_LOGIN_CREDENTIALS|INVALID_PASSWORD|EMAIL_NOT_FOUND|INVALID_EMAIL)$/.test(err.code || '')) lockFail();
+      $('#lErr').textContent = err.message || 'Terjadi kesalahan. Muat ulang halaman lalu coba lagi.';
+    }
+    btn.textContent = 'Masuk'; btn.disabled = false;
+    if(lockLeft() > 0) showLock();
   });
   $$('.tab').forEach(t => t.addEventListener('click', () => {
     $$('.tab').forEach(x => x.classList.remove('active')); $$('.pane').forEach(x => x.classList.remove('active'));
@@ -1044,12 +1088,17 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   });
 
   /* ---------- ADMIN: PASSWORD ---------- */
-  $('#passSave').addEventListener('click', () => {
-    if(!isAdmin) return;
+  $('#passSave').addEventListener('click', async () => {
+    if(!isAdmin || !session) return;
     const p = $('#newPass').value;
-    if(p.length < 8){ $('#pErr').textContent='Minimal 8 karakter.'; return; }
-    try{ LS.set('apk2_hash', derive(curUser, p)); $('#newPass').value=''; $('#pErr').textContent=''; toast('Password diubah'); }
-    catch(_){ $('#pErr').textContent='Gagal mengubah password.'; }
+    if(p.length < 12){ $('#pErr').textContent = 'Minimal 12 karakter.'; return; }
+    const btn = $('#passSave'); btn.disabled = true;
+    try{
+      const tk = await getToken(); if(!tk) throw new Error('Sesi berakhir. Silakan masuk lagi.');
+      const j = await authCall(AUTH_URL + ':update', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ idToken: tk, password: p, returnSecureToken: true }) });
+      setSession(j); $('#newPass').value = ''; $('#pErr').textContent = ''; toast('Password diubah');
+    }catch(err){ $('#pErr').textContent = err.message || 'Gagal mengubah password.'; }
+    btn.disabled = false;
   });
 
   /* ---------- ADMIN: LOKASI & SOSMED ---------- */
@@ -1102,6 +1151,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   renderImages(); renderNews(); renderGallery(); renderInfo(); applyAuth();
 
   /* ---------- SINKRON ---------- */
+  restoreSession();
   syncAll();
   setInterval(() => { if(!document.hidden) syncAll(); }, 60000);
   document.addEventListener('visibilitychange', () => { if(!document.hidden) syncAll(); });
