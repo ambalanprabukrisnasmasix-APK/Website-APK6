@@ -390,7 +390,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
       <img class="fl" data-logo alt="Logo">
       <b>AMBALAN PRABU KRISNA</b>
       <p style="margin-top:6px">Gugus Depan 02.077 – 02.078<br>Pangkalan SMAN 6 Madiun</p>
-      <p style="margin-top:8px">Salam Pramuka! ⚜</p>
+      <p style="margin-top:8px">Salam Pramuka! <span id="loginIcon" style="cursor:default;user-select:none">⚜</span></p>
     </div>
     <div>
       <h4>Navigasi</h4>
@@ -401,7 +401,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
         <li><a href="#struktur">Struktur</a></li>
         <li><a href="#galeri">Galeri</a></li>
         <li><a href="#berita">Berita</a></li>
-        <li><a href="#" id="loginLink" class="tiny">Masuk</a><a href="#" id="logoutLink" class="tiny" style="display:none">Keluar</a></li>
+        <li><a href="#" id="logoutLink" class="tiny" style="display:none">Keluar</a></li>
       </ul>
     </div>
     <div class="loc">
@@ -737,7 +737,6 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 
   function applyAuth(){
     $('#adminFab').classList.toggle('on', isAdmin);
-    $('#loginLink').style.display = isAdmin ? 'none' : '';
     $('#logoutLink').style.display = isAdmin ? '' : 'none';
     renderCouncil();
   }
@@ -940,7 +939,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
     const i = getInfo(); $('#iAddr').value = i.addr; $('#iYt').value = i.yt; $('#iTt').value = i.tt; $('#iIg').value = i.ig;
     open('#mAdmin');
   }
-  $('#loginLink').addEventListener('click', e => { e.preventDefault(); $('#lErr').textContent=''; open('#mLogin'); if(lockLeft() > 0) showLock(); setTimeout(() => $('#lUser').focus(), 100); });
+  $('#loginIcon').addEventListener('click', e => { e.preventDefault(); $('#lErr').textContent=''; open('#mLogin'); if(lockLeft() > 0) showLock(); setTimeout(() => $('#lUser').focus(), 100); });
   $('#logoutLink').addEventListener('click', e => { e.preventDefault(); clearSession(); applyAuth(); closeAll(); toast('Berhasil keluar'); });
   $('#adminFab').addEventListener('click', openAdmin);
   $('#social').addEventListener('click', e => { const a = e.target.closest('a[data-empty]'); if(a){ e.preventDefault(); toast('Link sosial media belum diatur'); } });
