@@ -1,0 +1,39 @@
+name: Buat halaman pratinjau berita
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pages: write
+
+concurrency:
+  group: berita
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Buat halaman berita
+        run: node scripts/generate-berita.mjs
+      - name: Simpan jika ada perubahan
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A berita img-berita
+          if git diff --cached --quiet; then
+            echo "Tidak ada perubahan"
+          else
+            git commit -m "Perbarui pratinjau berita"
+            git push
+            gh api -X POST "repos/${{ github.repository }}/pages/builds" || true
+          fi
