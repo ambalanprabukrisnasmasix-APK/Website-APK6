@@ -11,6 +11,8 @@
 <meta property="og:title" content="Ambalan Prabu Krisna – Gudep 02.077 & 02.078 SMAN 6 Madiun">
 <meta property="og:description" content="Website resmi Ambalan Prabu Krisna, Gugus Depan 02.077 - 02.078 Pangkalan SMAN 6 Madiun.">
 <meta property="og:url" content="https://ambalanprabukrisna.my.id/">
+<meta property="og:image" content="https://ambalanprabukrisna.my.id/favicon-192.png">
+<meta name="twitter:card" content="summary">
 <meta name="robots" content="index, follow">
 <link rel="canonical" href="https://ambalanprabukrisna.my.id/">
 <link rel="icon" type="image/png" sizes="48x48" href="/favicon.png">
@@ -878,15 +880,18 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
 
   /* ---------- BAGIKAN BERITA ---------- */
   // Jika website dipasang di Cloudflare Pages (ada /berita/...), link berita punya pratinjau gambar.
-  let FN_OK = false;
-  fetch('/berita/_ping', { cache: 'no-store' }).then(r => r.ok ? r.json() : null).then(j => { FN_OK = !!(j && j.ok); }).catch(() => {});
-  const newsUrl = id => FN_OK ? location.origin + '/berita/' + id : location.href.split('#')[0] + '#berita-' + id;
+  // Halaman /berita/<id>/ dibuat otomatis oleh GitHub Actions (pratinjau foto berita di WhatsApp),
+  // lalu pengunjung langsung diarahkan ke berita di website ini.
+  const SHARE_BASE = 'https://ambalanprabukrisna.my.id';
+  const PING = Promise.resolve();
+  const newsUrl = id => SHARE_BASE + '/berita/' + id + '/';
   async function copyText(t){
     try{ await navigator.clipboard.writeText(t); return true; }catch(_){}
     try{ const x = document.createElement('textarea'); x.value = t; x.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(x); x.select(); const ok = document.execCommand('copy'); x.remove(); return ok; }catch(_){ return false; }
   }
   async function shareNews(id){
     const n = news.find(x => x.id === id); if(!n) return;
+    await PING;
     const url = newsUrl(id);
     if(navigator.share){ try{ await navigator.share({ title: n.title, text: n.title + ' - Ambalan Prabu Krisna', url }); return; }catch(e){ if(e && e.name === 'AbortError') return; } }
     toast((await copyText(url)) ? 'Link berita disalin' : 'Salin manual: ' + url);
@@ -907,7 +912,7 @@ footer::before{content:"";position:absolute;top:0;left:0;right:0;height:6px;back
   $('#readBody').addEventListener('click', async e => {
     const sh = e.target.closest('[data-share]'), cp = e.target.closest('[data-copy]');
     if(sh) shareNews(sh.dataset.share);
-    if(cp) toast((await copyText(newsUrl(cp.dataset.copy))) ? 'Link berita disalin' : 'Salin manual: ' + newsUrl(cp.dataset.copy));
+    if(cp){ await PING; toast((await copyText(newsUrl(cp.dataset.copy))) ? 'Link berita disalin' : 'Salin manual: ' + newsUrl(cp.dataset.copy)); }
   });
   const newsClick = e => {
     const sh = e.target.closest('[data-share]'); if(sh){ e.stopPropagation(); shareNews(sh.dataset.share); return; }
